@@ -1,0 +1,29 @@
+'use client';
+import { Navigation } from './Navigation';
+import { ToastContainer } from '@/components/ui/Toast';
+import { usePathname } from 'next/navigation';
+
+export function AppShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  // TV board gets full-screen treatment
+  const isBoard = pathname === '/board';
+
+  if (isBoard) {
+    return (
+      <>
+        {children}
+        <ToastContainer />
+      </>
+    );
+  }
+
+  return (
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-950 overflow-hidden">
+      <Navigation />
+      <main className="flex-1 flex flex-col overflow-hidden">
+        {children}
+      </main>
+      <ToastContainer />
+    </div>
+  );
+}

@@ -4,30 +4,29 @@ import { zodResponseFormat } from 'openai/helpers/zod';
 import { z } from 'zod';
 
 const ExtractedSchema = z.object({
-  salesPersonName: z.string().optional(),
-  customerName: z.string().optional(),
-  productName: z.string().optional(),
-  productCategory: z.string().optional(),
-  dateNeeded: z.string().optional(),
-  targetPrice: z.number().nullable().optional(),
-  annualVolume: z.number().nullable().optional(),
-  quickNote: z.string().optional(),
-  priority: z.enum(['High', 'Medium', 'Low']).optional(),
+  salesPersonName: z.string().nullable(),
+  customerName: z.string().nullable(),
+  productName: z.string().nullable(),
+  productCategory: z.string().nullable(),
+  dateNeeded: z.string().nullable(),
+  targetPrice: z.number().nullable(),
+  annualVolume: z.number().nullable(),
+  quickNote: z.string().nullable(),
+  priority: z.enum(['High', 'Medium', 'Low']).nullable(),
   status: z.enum([
     'New', 'In Review', 'Sourcing', 'Waiting on Supplier',
     'Quoted', 'Awaiting Customer Response', 'On Hold', 'Won', 'Lost', 'Completed',
-  ]).optional(),
-  isSourcingRequest: z.boolean().optional(),
-  requestedBy: z.string().optional(),
-  nextAction: z.string().optional(),
-  supplierName: z.string().optional(),
-  assignedOwner: z.string().optional(),
-  followUpDate: z.string().optional(),
-  internalComments: z.string().optional(),
-  fieldsFound: z.array(z.string()),
+  ]).nullable(),
+  isSourcingRequest: z.boolean().nullable(),
+  requestedBy: z.string().nullable(),
+  nextAction: z.string().nullable(),
+  supplierName: z.string().nullable(),
+  assignedOwner: z.string().nullable(),
+  followUpDate: z.string().nullable(),
+  internalComments: z.string().nullable(),
 });
 
-export type ParsedOpportunity = z.infer<typeof ExtractedSchema>;
+export type ParsedOpportunity = z.infer<typeof ExtractedSchema> & { fieldsFound: string[] };
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -64,9 +63,7 @@ Priority rules:
 
 Set isSourcingRequest to true if someone is asking you to find, source, or locate a product for them.
 
-For fieldsFound, list the camelCase field names that you successfully extracted (e.g. ["customerName", "productName", "dateNeeded"]).
-
-Only extract fields clearly mentioned or strongly implied. Leave fields undefined if not found.`,
+Only extract fields clearly mentioned or strongly implied. Return null for fields not found.`,
         },
         {
           role: 'user',
@@ -76,8 +73,12 @@ Only extract fields clearly mentioned or strongly implied. Leave fields undefine
       response_format: zodResponseFormat(ExtractedSchema, 'opportunity'),
     });
 
-    const result = completion.choices[0].message.parsed;
-    return NextResponse.json({ data: result });
+    const parsed = completion.choices[0].message.parsed;
+    const fieldsFound = Object.entries(parsed ?? {})
+      .filter(([, v]) => v !== null && v !== undefined && v !== '')
+      .map(([k]) => k);
+
+    return NextResponse.json({ data: { ...parsed, fieldsFound } });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'OpenAI request failed';
     return NextResponse.json({ error: message }, { status: 500 });

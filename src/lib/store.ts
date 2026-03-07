@@ -146,7 +146,7 @@ export const useStore = create<AppStore>()(
       resetToSeedData: () => set({ opportunities: [] }),
     }),
     {
-      name: 'opportunity-tracker-storage',
+      name: 'opportunity-tracker-v2',
       storage: createJSONStorage(() => {
         // Safe localStorage access
         if (typeof window === 'undefined') {

@@ -2,7 +2,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { Opportunity, UserRole } from './types';
-import { SEED_DATA } from './seed';
 import { generateId, nowISO, todayISO } from './utils';
 
 interface AppStore {
@@ -36,7 +35,7 @@ interface AppStore {
 export const useStore = create<AppStore>()(
   persist(
     (set, get) => ({
-      opportunities: SEED_DATA,
+      opportunities: [],
       role: 'Admin',
       hydrated: false,
 
@@ -144,7 +143,7 @@ export const useStore = create<AppStore>()(
 
       setRole: (role) => set({ role }),
 
-      resetToSeedData: () => set({ opportunities: SEED_DATA }),
+      resetToSeedData: () => set({ opportunities: [] }),
     }),
     {
       name: 'opportunity-tracker-storage',

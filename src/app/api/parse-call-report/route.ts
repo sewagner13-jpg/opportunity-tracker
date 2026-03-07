@@ -48,12 +48,13 @@ export async function POST(req: NextRequest) {
   const client = new OpenAI({ apiKey });
   const today = new Date().toISOString().split('T')[0];
 
-  const completion = await client.chat.completions.parse({
-    model: 'gpt-4o',
-    messages: [
-      {
-        role: 'system',
-        content: `You extract structured opportunity data from sales call reports, meeting notes, and emails.
+  try {
+    const completion = await client.chat.completions.parse({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: `You extract structured opportunity data from sales call reports, meeting notes, and emails.
 Today's date is ${today}. Use YYYY-MM-DD format for all dates.
 
 Priority rules:
@@ -66,15 +67,19 @@ Set isSourcingRequest to true if someone is asking you to find, source, or locat
 For fieldsFound, list the camelCase field names that you successfully extracted (e.g. ["customerName", "productName", "dateNeeded"]).
 
 Only extract fields clearly mentioned or strongly implied. Leave fields undefined if not found.`,
-      },
-      {
-        role: 'user',
-        content: `Extract opportunity data from this call report:\n\n${callReport}`,
-      },
-    ],
-    response_format: zodResponseFormat(ExtractedSchema, 'opportunity'),
-  });
+        },
+        {
+          role: 'user',
+          content: `Extract opportunity data from this call report:\n\n${callReport}`,
+        },
+      ],
+      response_format: zodResponseFormat(ExtractedSchema, 'opportunity'),
+    });
 
-  const result = completion.choices[0].message.parsed;
-  return NextResponse.json({ data: result });
+    const result = completion.choices[0].message.parsed;
+    return NextResponse.json({ data: result });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'OpenAI request failed';
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }

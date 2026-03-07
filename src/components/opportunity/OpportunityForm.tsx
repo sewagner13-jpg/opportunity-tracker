@@ -155,7 +155,7 @@ function ParseModal({
           {!result && (
             <>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Paste any call notes, email, or meeting summary — Claude will extract the relevant fields and pre-fill the form.
+                Paste any call notes, email, or meeting summary — ChatGPT will extract the relevant fields and pre-fill the form.
               </p>
               <textarea
                 value={text}
@@ -327,7 +327,7 @@ export function OpportunityForm({ existing, onCancel, onSuccess }: OpportunityFo
           <Wand2 size={18} className="text-blue-600 dark:text-blue-400 shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-blue-900 dark:text-blue-200">Have call notes or an email?</p>
-            <p className="text-xs text-blue-600 dark:text-blue-400">Claude can read them and auto-fill this form.</p>
+            <p className="text-xs text-blue-600 dark:text-blue-400">ChatGPT can read them and auto-fill this form.</p>
           </div>
           <button
             type="button"

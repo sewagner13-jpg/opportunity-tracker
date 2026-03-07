@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
-import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
+import OpenAI from 'openai';
+import { zodResponseFormat } from 'openai/helpers/zod';
 import { z } from 'zod';
 
 const ExtractedSchema = z.object({
@@ -37,21 +37,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Call report text is required' }, { status: 400 });
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
-      { error: 'ANTHROPIC_API_KEY is not set. Add it to your .env.local file or Netlify environment variables.' },
+      { error: 'OPENAI_API_KEY is not set. Add it to your .env.local file or Netlify environment variables.' },
       { status: 500 }
     );
   }
 
-  const client = new Anthropic({ apiKey });
+  const client = new OpenAI({ apiKey });
   const today = new Date().toISOString().split('T')[0];
 
-  const response = await client.messages.parse({
-    model: 'claude-opus-4-6',
-    max_tokens: 1024,
-    system: `You extract structured opportunity data from sales call reports, meeting notes, and emails.
+  const completion = await client.chat.completions.parse({
+    model: 'gpt-4o',
+    messages: [
+      {
+        role: 'system',
+        content: `You extract structured opportunity data from sales call reports, meeting notes, and emails.
 Today's date is ${today}. Use YYYY-MM-DD format for all dates.
 
 Priority rules:
@@ -64,13 +66,15 @@ Set isSourcingRequest to true if someone is asking you to find, source, or locat
 For fieldsFound, list the camelCase field names that you successfully extracted (e.g. ["customerName", "productName", "dateNeeded"]).
 
 Only extract fields clearly mentioned or strongly implied. Leave fields undefined if not found.`,
-    messages: [
-      { role: 'user', content: `Extract opportunity data from this call report:\n\n${callReport}` },
+      },
+      {
+        role: 'user',
+        content: `Extract opportunity data from this call report:\n\n${callReport}`,
+      },
     ],
-    output_config: {
-      format: zodOutputFormat(ExtractedSchema),
-    },
+    response_format: zodResponseFormat(ExtractedSchema, 'opportunity'),
   });
 
-  return NextResponse.json({ data: response.parsed_output });
+  const result = completion.choices[0].message.parsed;
+  return NextResponse.json({ data: result });
 }

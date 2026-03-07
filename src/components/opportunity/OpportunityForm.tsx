@@ -34,6 +34,8 @@ const EMPTY_FORM: FormData = {
   dateCompleted: '',
   includeInTodaysFocus: false,
   todaysFocusRank: 0,
+  isSourcingRequest: false,
+  requestedBy: '',
 };
 
 interface OpportunityFormProps {
@@ -247,6 +249,37 @@ export function OpportunityForm({ existing, onCancel, onSuccess }: OpportunityFo
               className={INPUT_CLS}
             />
           </Field>
+        </div>
+
+        {/* Sourcing Request */}
+        <div className="mt-4 border-t border-gray-100 dark:border-gray-700 pt-4">
+          <label className="flex items-center gap-3 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={form.isSourcingRequest}
+              onChange={(e) => update('isSourcingRequest', e.target.checked)}
+              className="w-4 h-4 rounded border-gray-300 text-orange-500 focus:ring-orange-400"
+            />
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              🔍 This is a Sourcing Request
+            </span>
+          </label>
+          <p className="text-xs text-gray-400 mt-1 ml-7">
+            Mark this if someone has asked you to find or source a product.
+          </p>
+          {form.isSourcingRequest && (
+            <div className="mt-3 ml-7">
+              <Field label="Requested By" hint="Who asked for this to be sourced?">
+                <input
+                  type="text"
+                  value={form.requestedBy}
+                  onChange={(e) => update('requestedBy', e.target.value)}
+                  placeholder="e.g. Sarah Chen, customer, management..."
+                  className={INPUT_CLS}
+                />
+              </Field>
+            </div>
+          )}
         </div>
 
         {/* Add to Focus */}

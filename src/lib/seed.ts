@@ -45,6 +45,8 @@ const BASE: Omit<Opportunity, 'id'> = {
   dateCompleted: '',
   includeInTodaysFocus: false,
   todaysFocusRank: 0,
+  isSourcingRequest: false,
+  requestedBy: '',
 };
 
 export const SEED_DATA: Opportunity[] = [

@@ -41,6 +41,8 @@ export interface Opportunity {
   dateCompleted: string;     // ISO date string
   includeInTodaysFocus: boolean;
   todaysFocusRank: number;
+  isSourcingRequest: boolean;
+  requestedBy: string;
 }
 
 export const STATUSES: Status[] = [

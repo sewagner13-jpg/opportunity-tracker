@@ -6,13 +6,14 @@ import {
   Tv2,
   Star,
   PlusCircle,
-  Settings,
+  PackageSearch,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStore } from '@/lib/store';
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/sourcing', label: 'Sourcing Requests', icon: PackageSearch },
   { href: '/focus', label: "Today's Focus", icon: Star },
   { href: '/board', label: 'TV Board', icon: Tv2 },
 ];

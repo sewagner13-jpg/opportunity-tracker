@@ -228,8 +228,8 @@ export function TVBoard() {
           <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">Customer</div>
           <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">Product</div>
           <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">Date Needed</div>
-          <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">Target Price</div>
-          <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">Ann. Volume</div>
+          <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">Price/lb</div>
+          <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">Ann. Vol (lbs)</div>
           <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">Status</div>
           <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">Priority</div>
           <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">Quick Note</div>

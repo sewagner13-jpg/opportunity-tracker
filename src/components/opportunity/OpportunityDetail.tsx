@@ -183,10 +183,10 @@ export function OpportunityDetail({ opportunity: opp }: OpportunityDetailProps) 
         <div className="space-y-6">
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
             <DetailSection title="Financials">
-              <DetailRow label="Target Price" value={formatCurrency(opp.targetPrice)} />
-              <DetailRow label="Annual Volume" value={formatNumber(opp.annualVolume)} />
+              <DetailRow label="Target Price (per lb)" value={formatCurrency(opp.targetPrice)} />
+              <DetailRow label="Annual Volume (lbs)" value={formatNumber(opp.annualVolume)} />
               <DetailRow
-                label="Potential Annual Value"
+                label="Total Opportunity Potential"
                 value={potentialValue ? formatCurrency(potentialValue) : null}
               />
               <DetailRow label="Quoted Price" value={formatCurrency(opp.actualQuotedPrice)} />

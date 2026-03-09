@@ -25,7 +25,7 @@ const SORTABLE_COLUMNS: { field: keyof Opportunity; label: string; width?: strin
   { field: 'dateEntered', label: 'Date Entered', width: 'w-28' },
   { field: 'dateNeeded', label: 'Date Needed', width: 'w-28' },
   { field: 'targetPrice', label: 'Target Price', width: 'w-28' },
-  { field: 'annualVolume', label: 'Ann. Volume', width: 'w-28' },
+  { field: 'annualVolume', label: 'Ann. Volume (lbs)', width: 'w-32' },
   { field: 'status', label: 'Status', width: 'w-40' },
   { field: 'priority', label: 'Priority', width: 'w-24' },
   { field: 'quickNote', label: 'Quick Note' },

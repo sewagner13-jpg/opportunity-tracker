@@ -425,7 +425,7 @@ export function OpportunityForm({ existing, onCancel, onSuccess }: OpportunityFo
               </select>
             </Field>
 
-            <Field label="Target Price (per unit)" hint="Leave blank if not yet determined">
+            <Field label="Target Price (per lb)" hint="Leave blank if not yet determined">
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
                 <input
@@ -440,7 +440,7 @@ export function OpportunityForm({ existing, onCancel, onSuccess }: OpportunityFo
               </div>
             </Field>
 
-            <Field label="Annual Volume (units)" hint="Expected annual order quantity">
+            <Field label="Annual Volume (lbs)" hint="Expected annual order quantity">
               <input
                 type="number"
                 min="0"
@@ -451,6 +451,14 @@ export function OpportunityForm({ existing, onCancel, onSuccess }: OpportunityFo
                 className={INPUT_CLS}
               />
             </Field>
+
+            {form.targetPrice != null && form.annualVolume != null && form.targetPrice > 0 && form.annualVolume > 0 && (
+              <Field label="Total Opportunity Potential" hint="Target price × annual volume">
+                <div className={`${INPUT_CLS} bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300 font-semibold`}>
+                  ${(form.targetPrice * form.annualVolume).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+              </Field>
+            )}
 
             <Field label="Quick Note" hint="Short summary visible in the main table">
               <input

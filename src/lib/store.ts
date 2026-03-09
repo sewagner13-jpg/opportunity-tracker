@@ -1,18 +1,20 @@
 'use client';
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
 import { Opportunity, UserRole } from './types';
 import { generateId, nowISO, todayISO } from './utils';
+import { supabase, rowToOpportunity, opportunityToRow } from './supabase';
 
 interface AppStore {
-  // Data
   opportunities: Opportunity[];
   role: UserRole;
-
-  // Hydration flag
+  loading: boolean;
   hydrated: boolean;
 
-  // CRUD
+  // Load all from Supabase (call once on app mount)
+  loadOpportunities: () => Promise<void>;
+  setHydrated: () => void;
+
+  // CRUD — optimistic: local state updates immediately, Supabase syncs in background
   addOpportunity: (opp: Omit<Opportunity, 'id' | 'dateEntered' | 'lastUpdated'>) => string;
   updateOpportunity: (id: string, updates: Partial<Opportunity>) => void;
   deleteOpportunity: (id: string) => void;
@@ -24,143 +26,146 @@ interface AppStore {
   reorderFocus: (ids: string[]) => void;
   markCompleteFromFocus: (id: string) => void;
 
-  // Role
+  // Role (local only)
   setRole: (role: UserRole) => void;
 
   // Reset
   resetToSeedData: () => void;
-  setHydrated: () => void;
 }
 
-export const useStore = create<AppStore>()(
-  persist(
-    (set, get) => ({
-      opportunities: [],
-      role: 'Admin',
-      hydrated: false,
+export const useStore = create<AppStore>()((set, get) => ({
+  opportunities: [],
+  role: 'Admin',
+  loading: true,
+  hydrated: false,
 
-      setHydrated: () => set({ hydrated: true }),
+  setHydrated: () => set({ hydrated: true }),
 
-      addOpportunity: (oppData) => {
-        const id = generateId();
-        const now = nowISO();
-        const today = todayISO();
-        const opp: Opportunity = {
-          ...oppData,
-          id,
-          dateEntered: today,
-          lastUpdated: now,
-        };
-        set((state) => ({ opportunities: [opp, ...state.opportunities] }));
-        return id;
-      },
+  loadOpportunities: async () => {
+    set({ loading: true });
+    const { data, error } = await supabase
+      .from('opportunities')
+      .select('*')
+      .order('date_entered', { ascending: false });
 
-      updateOpportunity: (id, updates) => {
-        set((state) => ({
-          opportunities: state.opportunities.map((o) =>
-            o.id === id ? { ...o, ...updates, lastUpdated: nowISO() } : o
-          ),
-        }));
-      },
-
-      deleteOpportunity: (id) => {
-        set((state) => ({
-          opportunities: state.opportunities.filter((o) => o.id !== id),
-        }));
-      },
-
-      getOpportunity: (id) => {
-        return get().opportunities.find((o) => o.id === id);
-      },
-
-      toggleFocus: (id) => {
-        const opps = get().opportunities;
-        const opp = opps.find((o) => o.id === id);
-        if (!opp) return;
-
-        if (opp.includeInTodaysFocus) {
-          // Remove from focus
-          set((state) => ({
-            opportunities: state.opportunities.map((o) =>
-              o.id === id
-                ? { ...o, includeInTodaysFocus: false, todaysFocusRank: 0, lastUpdated: nowISO() }
-                : o
-            ),
-          }));
-        } else {
-          // Add to focus
-          const focusItems = opps.filter((o) => o.includeInTodaysFocus);
-          const maxRank = focusItems.length > 0
-            ? Math.max(...focusItems.map((o) => o.todaysFocusRank))
-            : 0;
-          set((state) => ({
-            opportunities: state.opportunities.map((o) =>
-              o.id === id
-                ? { ...o, includeInTodaysFocus: true, todaysFocusRank: maxRank + 1, lastUpdated: nowISO() }
-                : o
-            ),
-          }));
-        }
-      },
-
-      removeFocus: (id) => {
-        set((state) => ({
-          opportunities: state.opportunities.map((o) =>
-            o.id === id
-              ? { ...o, includeInTodaysFocus: false, todaysFocusRank: 0, lastUpdated: nowISO() }
-              : o
-          ),
-        }));
-      },
-
-      reorderFocus: (ids) => {
-        set((state) => ({
-          opportunities: state.opportunities.map((o) => {
-            const rank = ids.indexOf(o.id);
-            return rank >= 0 ? { ...o, todaysFocusRank: rank + 1 } : o;
-          }),
-        }));
-      },
-
-      markCompleteFromFocus: (id) => {
-        set((state) => ({
-          opportunities: state.opportunities.map((o) =>
-            o.id === id
-              ? {
-                  ...o,
-                  isCompleted: true,
-                  status: 'Completed',
-                  completionPercent: 100,
-                  dateCompleted: todayISO(),
-                  includeInTodaysFocus: false,
-                  todaysFocusRank: 0,
-                  lastUpdated: nowISO(),
-                }
-              : o
-          ),
-        }));
-      },
-
-      setRole: (role) => set({ role }),
-
-      resetToSeedData: () => set({ opportunities: [] }),
-    }),
-    {
-      name: 'opportunity-tracker-v2',
-      storage: createJSONStorage(() => {
-        // Safe localStorage access
-        if (typeof window === 'undefined') {
-          return {
-            getItem: () => null,
-            setItem: () => {},
-            removeItem: () => {},
-          };
-        }
-        return localStorage;
-      }),
-      onRehydrateStorage: () => (state) => {
-        if (state) state.setHydrated();
-      },
+    if (error) {
+      console.error('Failed to load opportunities:', error);
+      set({ loading: false, hydrated: true });
+      return;
     }
-  )
-);
+
+    set({
+      opportunities: (data ?? []).map(rowToOpportunity),
+      loading: false,
+      hydrated: true,
+    });
+  },
+
+  addOpportunity: (oppData) => {
+    const id = generateId();
+    const opp: Opportunity = {
+      ...oppData,
+      id,
+      dateEntered: todayISO(),
+      lastUpdated: nowISO(),
+    };
+    // Optimistic local update
+    set((state) => ({ opportunities: [opp, ...state.opportunities] }));
+    // Background sync
+    supabase.from('opportunities').insert(opportunityToRow(opp)).then(({ error }) => {
+      if (error) console.error('Supabase insert failed:', error);
+    });
+    return id;
+  },
+
+  updateOpportunity: (id, updates) => {
+    const now = nowISO();
+    // Optimistic local update
+    set((state) => ({
+      opportunities: state.opportunities.map((o) =>
+        o.id === id ? { ...o, ...updates, lastUpdated: now } : o
+      ),
+    }));
+    // Background sync
+    const updated = get().opportunities.find((o) => o.id === id);
+    if (updated) {
+      supabase.from('opportunities').update(opportunityToRow(updated)).eq('id', id).then(({ error }) => {
+        if (error) console.error('Supabase update failed:', error);
+      });
+    }
+  },
+
+  deleteOpportunity: (id) => {
+    // Optimistic local update
+    set((state) => ({
+      opportunities: state.opportunities.filter((o) => o.id !== id),
+    }));
+    // Background sync
+    supabase.from('opportunities').delete().eq('id', id).then(({ error }) => {
+      if (error) console.error('Supabase delete failed:', error);
+    });
+  },
+
+  getOpportunity: (id) => {
+    return get().opportunities.find((o) => o.id === id);
+  },
+
+  toggleFocus: (id) => {
+    const opps = get().opportunities;
+    const opp = opps.find((o) => o.id === id);
+    if (!opp) return;
+
+    if (opp.includeInTodaysFocus) {
+      get().updateOpportunity(id, { includeInTodaysFocus: false, todaysFocusRank: 0 });
+    } else {
+      const focusItems = opps.filter((o) => o.includeInTodaysFocus);
+      const maxRank = focusItems.length > 0
+        ? Math.max(...focusItems.map((o) => o.todaysFocusRank))
+        : 0;
+      get().updateOpportunity(id, { includeInTodaysFocus: true, todaysFocusRank: maxRank + 1 });
+    }
+  },
+
+  removeFocus: (id) => {
+    get().updateOpportunity(id, { includeInTodaysFocus: false, todaysFocusRank: 0 });
+  },
+
+  reorderFocus: (ids) => {
+    // Optimistic local update
+    set((state) => ({
+      opportunities: state.opportunities.map((o) => {
+        const rank = ids.indexOf(o.id);
+        return rank >= 0 ? { ...o, todaysFocusRank: rank + 1 } : o;
+      }),
+    }));
+    // Background sync — update each rank in parallel
+    ids.forEach((id, index) => {
+      supabase.from('opportunities')
+        .update({ todays_focus_rank: index + 1 })
+        .eq('id', id)
+        .then(({ error }) => {
+          if (error) console.error('Supabase reorder failed:', error);
+        });
+    });
+  },
+
+  markCompleteFromFocus: (id) => {
+    get().updateOpportunity(id, {
+      isCompleted: true,
+      status: 'Completed',
+      completionPercent: 100,
+      dateCompleted: todayISO(),
+      includeInTodaysFocus: false,
+      todaysFocusRank: 0,
+    });
+  },
+
+  setRole: (role) => set({ role }),
+
+  resetToSeedData: () => {
+    set({ opportunities: [] });
+    supabase.from('opportunities').delete().neq('id', '').then(({ error }) => {
+      if (error) console.error('Supabase reset failed:', error);
+    });
+  },
+}));

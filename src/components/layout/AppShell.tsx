@@ -1,10 +1,17 @@
 'use client';
+import { useEffect } from 'react';
 import { Navigation } from './Navigation';
 import { ToastContainer } from '@/components/ui/Toast';
 import { usePathname } from 'next/navigation';
+import { useStore } from '@/lib/store';
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const loadOpportunities = useStore((s) => s.loadOpportunities);
+
+  useEffect(() => {
+    loadOpportunities();
+  }, [loadOpportunities]);
   // TV board gets full-screen treatment
   const isBoard = pathname === '/board';
 

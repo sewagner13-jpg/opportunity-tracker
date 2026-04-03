@@ -2,7 +2,7 @@
 import { create } from 'zustand';
 import { Opportunity, UserRole } from './types';
 import { generateId, nowISO, todayISO } from './utils';
-import { supabase, rowToOpportunity, opportunityToRow } from './supabase';
+import { supabase, supabaseConfigured, rowToOpportunity, opportunityToRow } from './supabase';
 
 interface AppStore {
   opportunities: Opportunity[];
@@ -49,6 +49,10 @@ export const useStore = create<AppStore>()((set, get) => ({
   clearConnectionError: () => set({ connectionError: null }),
 
   loadOpportunities: async () => {
+    if (!supabaseConfigured) {
+      set({ loading: false, hydrated: true, isConnected: false, connectionError: 'Supabase is not configured.' });
+      return;
+    }
     set({ loading: true, connectionError: null });
     const { data, error } = await supabase
       .from('opportunities')

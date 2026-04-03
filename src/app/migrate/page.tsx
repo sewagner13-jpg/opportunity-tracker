@@ -1,7 +1,39 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { supabase, opportunityToRow } from '@/lib/supabase';
 import { Opportunity } from '@/lib/types';
+
+function opportunityToRow(opp: Opportunity): Record<string, unknown> {
+  return {
+    id: opp.id,
+    sales_person_name: opp.salesPersonName,
+    date_entered: opp.dateEntered || null,
+    date_needed: opp.dateNeeded || null,
+    target_price: opp.targetPrice,
+    annual_volume: opp.annualVolume,
+    quick_note: opp.quickNote,
+    customer_name: opp.customerName,
+    product_name: opp.productName,
+    product_category: opp.productCategory,
+    status: opp.status,
+    priority: opp.priority,
+    completion_percent: opp.completionPercent,
+    assigned_owner: opp.assignedOwner,
+    supplier_name: opp.supplierName,
+    last_updated: opp.lastUpdated || null,
+    next_action: opp.nextAction,
+    follow_up_date: opp.followUpDate || null,
+    estimated_margin: opp.estimatedMargin,
+    actual_quoted_price: opp.actualQuotedPrice,
+    outcome_reason: opp.outcomeReason,
+    internal_comments: opp.internalComments,
+    is_completed: opp.isCompleted,
+    date_completed: opp.dateCompleted || null,
+    include_in_todays_focus: opp.includeInTodaysFocus,
+    todays_focus_rank: opp.todaysFocusRank,
+    is_sourcing_request: opp.isSourcingRequest,
+    requested_by: opp.requestedBy,
+  };
+}
 
 interface MigrateState {
   status: 'idle' | 'scanning' | 'ready' | 'migrating' | 'done' | 'error' | 'empty';
@@ -47,16 +79,17 @@ export default function MigratePage() {
     let skipped = 0;
 
     for (const opp of state.opportunities) {
-      const row = opportunityToRow(opp);
-      const { error } = await supabase
-        .from('opportunities')
-        .upsert(row, { onConflict: 'id', ignoreDuplicates: false });
-
-      if (error) {
-        console.error('Failed to migrate:', opp.id, error);
-        skipped++;
-      } else {
+      try {
+        const res = await fetch('/api/opportunities', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(opportunityToRow(opp)),
+        });
+        if (!res.ok) throw new Error(await res.text());
         migrated++;
+      } catch (err) {
+        console.error('Failed to migrate:', opp.id, err);
+        skipped++;
       }
     }
 
@@ -97,7 +130,7 @@ export default function MigratePage() {
                 in this browser.
               </p>
               <p className="text-blue-600 text-xs mt-1">
-                Existing records will be updated; new ones will be added.
+                New records will be added to the shared database.
               </p>
             </div>
             <button

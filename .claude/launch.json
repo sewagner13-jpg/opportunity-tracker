@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "opportunity-tracker",
-      "runtimeExecutable": "/Users/seanwagner/.nvm/versions/node/v24.13.0/bin/npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeExecutable": "/bin/sh",
+      "runtimeArgs": ["/Users/seanwagner/Opportunity-Tracker-App/start-dev.sh"],
       "port": 3000
     }
   ]

@@ -1,8 +1,75 @@
 'use client';
 import { create } from 'zustand';
-import { Opportunity, UserRole } from './types';
+import { Opportunity, UserRole, Status, Priority } from './types';
 import { generateId, nowISO, todayISO } from './utils';
-import { supabase, supabaseConfigured, rowToOpportunity, opportunityToRow } from './supabase';
+
+// Map DB row (snake_case) → Opportunity (camelCase)
+function rowToOpportunity(row: Record<string, unknown>): Opportunity {
+  return {
+    id: (row.id as string) ?? '',
+    salesPersonName: (row.sales_person_name as string) ?? '',
+    dateEntered: (row.date_entered as string) ?? '',
+    dateNeeded: (row.date_needed as string) ?? '',
+    targetPrice: row.target_price != null ? Number(row.target_price) : null,
+    annualVolume: row.annual_volume != null ? Number(row.annual_volume) : null,
+    quickNote: (row.quick_note as string) ?? '',
+    customerName: (row.customer_name as string) ?? '',
+    productName: (row.product_name as string) ?? '',
+    productCategory: (row.product_category as string) ?? '',
+    status: (row.status as Status) ?? 'New',
+    priority: (row.priority as Priority) ?? 'Medium',
+    completionPercent: Number(row.completion_percent) ?? 0,
+    assignedOwner: (row.assigned_owner as string) ?? '',
+    supplierName: (row.supplier_name as string) ?? '',
+    lastUpdated: (row.last_updated as string) ?? '',
+    nextAction: (row.next_action as string) ?? '',
+    followUpDate: (row.follow_up_date as string) ?? '',
+    estimatedMargin: row.estimated_margin != null ? Number(row.estimated_margin) : null,
+    actualQuotedPrice: row.actual_quoted_price != null ? Number(row.actual_quoted_price) : null,
+    outcomeReason: (row.outcome_reason as string) ?? '',
+    internalComments: (row.internal_comments as string) ?? '',
+    isCompleted: Boolean(row.is_completed),
+    dateCompleted: (row.date_completed as string) ?? '',
+    includeInTodaysFocus: Boolean(row.include_in_todays_focus),
+    todaysFocusRank: Number(row.todays_focus_rank) ?? 0,
+    isSourcingRequest: Boolean(row.is_sourcing_request),
+    requestedBy: (row.requested_by as string) ?? '',
+  };
+}
+
+// Map Opportunity (camelCase) → DB row (snake_case)
+function opportunityToRow(opp: Opportunity): Record<string, unknown> {
+  return {
+    id: opp.id,
+    sales_person_name: opp.salesPersonName,
+    date_entered: opp.dateEntered || null,
+    date_needed: opp.dateNeeded || null,
+    target_price: opp.targetPrice,
+    annual_volume: opp.annualVolume,
+    quick_note: opp.quickNote,
+    customer_name: opp.customerName,
+    product_name: opp.productName,
+    product_category: opp.productCategory,
+    status: opp.status,
+    priority: opp.priority,
+    completion_percent: opp.completionPercent,
+    assigned_owner: opp.assignedOwner,
+    supplier_name: opp.supplierName,
+    last_updated: opp.lastUpdated || null,
+    next_action: opp.nextAction,
+    follow_up_date: opp.followUpDate || null,
+    estimated_margin: opp.estimatedMargin,
+    actual_quoted_price: opp.actualQuotedPrice,
+    outcome_reason: opp.outcomeReason,
+    internal_comments: opp.internalComments,
+    is_completed: opp.isCompleted,
+    date_completed: opp.dateCompleted || null,
+    include_in_todays_focus: opp.includeInTodaysFocus,
+    todays_focus_rank: opp.todaysFocusRank,
+    is_sourcing_request: opp.isSourcingRequest,
+    requested_by: opp.requestedBy,
+  };
+}
 
 interface AppStore {
   opportunities: Opportunity[];
@@ -12,27 +79,21 @@ interface AppStore {
   connectionError: string | null;
   isConnected: boolean;
 
-  // Load all from Supabase (call once on app mount)
   loadOpportunities: () => Promise<void>;
   setHydrated: () => void;
   clearConnectionError: () => void;
 
-  // CRUD — optimistic: local state updates immediately, Supabase syncs in background
   addOpportunity: (opp: Omit<Opportunity, 'id' | 'dateEntered' | 'lastUpdated'>) => string;
   updateOpportunity: (id: string, updates: Partial<Opportunity>) => void;
   deleteOpportunity: (id: string) => void;
   getOpportunity: (id: string) => Opportunity | undefined;
 
-  // Focus management
   toggleFocus: (id: string) => void;
   removeFocus: (id: string) => void;
   reorderFocus: (ids: string[]) => void;
   markCompleteFromFocus: (id: string) => void;
 
-  // Role (local only)
   setRole: (role: UserRole) => void;
-
-  // Reset
   resetToSeedData: () => void;
 }
 
@@ -45,56 +106,47 @@ export const useStore = create<AppStore>()((set, get) => ({
   isConnected: false,
 
   setHydrated: () => set({ hydrated: true }),
-
   clearConnectionError: () => set({ connectionError: null }),
 
   loadOpportunities: async () => {
-    if (!supabaseConfigured) {
-      set({ loading: false, hydrated: true, isConnected: false, connectionError: 'Supabase is not configured.' });
-      return;
-    }
     set({ loading: true, connectionError: null });
-    const { data, error } = await supabase
-      .from('opportunities')
-      .select('*')
-      .order('date_entered', { ascending: false });
-
-    if (error) {
-      const errorMsg = error.message || 'Failed to connect to database';
-      console.error('Failed to load opportunities:', error);
+    try {
+      const res = await fetch('/api/opportunities');
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to load');
+      set({
+        opportunities: (json.data ?? []).map(rowToOpportunity),
+        loading: false,
+        hydrated: true,
+        connectionError: null,
+        isConnected: true,
+      });
+    } catch (err) {
+      console.error('loadOpportunities failed:', err);
       set({
         loading: false,
         hydrated: true,
-        connectionError: errorMsg,
+        connectionError: String(err),
         isConnected: false,
       });
-      return;
     }
-
-    set({
-      opportunities: (data ?? []).map(rowToOpportunity),
-      loading: false,
-      hydrated: true,
-      connectionError: null,
-      isConnected: true,
-    });
   },
 
   addOpportunity: (oppData) => {
     const id = generateId();
-    const opp: Opportunity = {
-      ...oppData,
-      id,
-      dateEntered: todayISO(),
-      lastUpdated: nowISO(),
-    };
-    // Optimistic local update
+    const opp: Opportunity = { ...oppData, id, dateEntered: todayISO(), lastUpdated: nowISO() };
+    // Optimistic
     set((state) => ({ opportunities: [opp, ...state.opportunities] }));
     // Background sync
-    supabase.from('opportunities').insert(opportunityToRow(opp)).then(({ error }) => {
-      if (error) {
-        console.error('Supabase insert failed:', error);
-        set({ connectionError: error.message || 'Failed to save opportunity' });
+    fetch('/api/opportunities', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(opportunityToRow(opp)),
+    }).then(async (res) => {
+      if (!res.ok) {
+        const j = await res.json();
+        console.error('Insert failed:', j.error);
+        set({ connectionError: j.error || 'Failed to save' });
       }
     });
     return id;
@@ -102,81 +154,68 @@ export const useStore = create<AppStore>()((set, get) => ({
 
   updateOpportunity: (id, updates) => {
     const now = nowISO();
-    // Optimistic local update
     set((state) => ({
       opportunities: state.opportunities.map((o) =>
         o.id === id ? { ...o, ...updates, lastUpdated: now } : o
       ),
     }));
-    // Background sync
     const updated = get().opportunities.find((o) => o.id === id);
     if (updated) {
-      supabase.from('opportunities').update(opportunityToRow(updated)).eq('id', id).then(({ error }) => {
-        if (error) {
-          console.error('Supabase update failed:', error);
-          set({ connectionError: error.message || 'Failed to update opportunity' });
+      fetch(`/api/opportunities/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(opportunityToRow(updated)),
+      }).then(async (res) => {
+        if (!res.ok) {
+          const j = await res.json();
+          console.error('Update failed:', j.error);
+          set({ connectionError: j.error || 'Failed to update' });
         }
       });
     }
   },
 
   deleteOpportunity: (id) => {
-    // Optimistic local update
-    set((state) => ({
-      opportunities: state.opportunities.filter((o) => o.id !== id),
-    }));
-    // Background sync
-    supabase.from('opportunities').delete().eq('id', id).then(({ error }) => {
-      if (error) {
-        console.error('Supabase delete failed:', error);
-        set({ connectionError: error.message || 'Failed to delete opportunity' });
+    set((state) => ({ opportunities: state.opportunities.filter((o) => o.id !== id) }));
+    fetch(`/api/opportunities/${id}`, { method: 'DELETE' }).then(async (res) => {
+      if (!res.ok) {
+        const j = await res.json();
+        console.error('Delete failed:', j.error);
+        set({ connectionError: j.error || 'Failed to delete' });
       }
     });
   },
 
-  getOpportunity: (id) => {
-    return get().opportunities.find((o) => o.id === id);
-  },
+  getOpportunity: (id) => get().opportunities.find((o) => o.id === id),
 
   toggleFocus: (id) => {
     const opps = get().opportunities;
     const opp = opps.find((o) => o.id === id);
     if (!opp) return;
-
     if (opp.includeInTodaysFocus) {
       get().updateOpportunity(id, { includeInTodaysFocus: false, todaysFocusRank: 0 });
     } else {
-      const focusItems = opps.filter((o) => o.includeInTodaysFocus);
-      const maxRank = focusItems.length > 0
-        ? Math.max(...focusItems.map((o) => o.todaysFocusRank))
-        : 0;
+      const maxRank = opps.filter((o) => o.includeInTodaysFocus)
+        .reduce((max, o) => Math.max(max, o.todaysFocusRank), 0);
       get().updateOpportunity(id, { includeInTodaysFocus: true, todaysFocusRank: maxRank + 1 });
     }
   },
 
-  removeFocus: (id) => {
-    get().updateOpportunity(id, { includeInTodaysFocus: false, todaysFocusRank: 0 });
-  },
+  removeFocus: (id) => get().updateOpportunity(id, { includeInTodaysFocus: false, todaysFocusRank: 0 }),
 
   reorderFocus: (ids) => {
-    // Optimistic local update
     set((state) => ({
       opportunities: state.opportunities.map((o) => {
         const rank = ids.indexOf(o.id);
         return rank >= 0 ? { ...o, todaysFocusRank: rank + 1 } : o;
       }),
     }));
-    // Background sync — update each rank in parallel
     ids.forEach((id, index) => {
-      supabase.from('opportunities')
-        .update({ todays_focus_rank: index + 1 })
-        .eq('id', id)
-        .then(({ error }) => {
-          if (error) {
-            console.error('Supabase reorder failed:', error);
-            set({ connectionError: error.message || 'Failed to reorder focus list' });
-          }
-        });
+      fetch(`/api/opportunities/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ todays_focus_rank: index + 1 }),
+      });
     });
   },
 
@@ -195,8 +234,6 @@ export const useStore = create<AppStore>()((set, get) => ({
 
   resetToSeedData: () => {
     set({ opportunities: [] });
-    supabase.from('opportunities').delete().neq('id', '').then(({ error }) => {
-      if (error) console.error('Supabase reset failed:', error);
-    });
+    fetch('/api/opportunities', { method: 'DELETE' });
   },
 }));

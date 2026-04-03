@@ -1,17 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 import { Opportunity, Status, Priority } from './types';
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
-const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://hbqvrvrbouqjxxinopit.supabase.co';
+const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_KJOCg7WQrIgTqlYKklEl6Q_JkfJ_q3W';
 
-export const supabaseConfigured = Boolean(url && key);
+export const supabaseConfigured = true;
 
-// Use placeholder values during build when env vars are absent — the client
-// won't be called at runtime because supabaseConfigured will be false.
-export const supabase = createClient(
-  url || 'https://placeholder.supabase.co',
-  key || 'placeholder-key'
-);
+export const supabase = createClient(url, key);
 
 // Map DB row (snake_case) → Opportunity (camelCase)
 export function rowToOpportunity(row: Record<string, unknown>): Opportunity {

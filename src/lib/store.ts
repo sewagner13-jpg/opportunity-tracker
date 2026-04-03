@@ -9,10 +9,13 @@ interface AppStore {
   role: UserRole;
   loading: boolean;
   hydrated: boolean;
+  connectionError: string | null;
+  isConnected: boolean;
 
   // Load all from Supabase (call once on app mount)
   loadOpportunities: () => Promise<void>;
   setHydrated: () => void;
+  clearConnectionError: () => void;
 
   // CRUD — optimistic: local state updates immediately, Supabase syncs in background
   addOpportunity: (opp: Omit<Opportunity, 'id' | 'dateEntered' | 'lastUpdated'>) => string;
@@ -38,19 +41,29 @@ export const useStore = create<AppStore>()((set, get) => ({
   role: 'Admin',
   loading: true,
   hydrated: false,
+  connectionError: null,
+  isConnected: false,
 
   setHydrated: () => set({ hydrated: true }),
 
+  clearConnectionError: () => set({ connectionError: null }),
+
   loadOpportunities: async () => {
-    set({ loading: true });
+    set({ loading: true, connectionError: null });
     const { data, error } = await supabase
       .from('opportunities')
       .select('*')
       .order('date_entered', { ascending: false });
 
     if (error) {
+      const errorMsg = error.message || 'Failed to connect to database';
       console.error('Failed to load opportunities:', error);
-      set({ loading: false, hydrated: true });
+      set({
+        loading: false,
+        hydrated: true,
+        connectionError: errorMsg,
+        isConnected: false,
+      });
       return;
     }
 
@@ -58,6 +71,8 @@ export const useStore = create<AppStore>()((set, get) => ({
       opportunities: (data ?? []).map(rowToOpportunity),
       loading: false,
       hydrated: true,
+      connectionError: null,
+      isConnected: true,
     });
   },
 
@@ -73,7 +88,10 @@ export const useStore = create<AppStore>()((set, get) => ({
     set((state) => ({ opportunities: [opp, ...state.opportunities] }));
     // Background sync
     supabase.from('opportunities').insert(opportunityToRow(opp)).then(({ error }) => {
-      if (error) console.error('Supabase insert failed:', error);
+      if (error) {
+        console.error('Supabase insert failed:', error);
+        set({ connectionError: error.message || 'Failed to save opportunity' });
+      }
     });
     return id;
   },
@@ -90,7 +108,10 @@ export const useStore = create<AppStore>()((set, get) => ({
     const updated = get().opportunities.find((o) => o.id === id);
     if (updated) {
       supabase.from('opportunities').update(opportunityToRow(updated)).eq('id', id).then(({ error }) => {
-        if (error) console.error('Supabase update failed:', error);
+        if (error) {
+          console.error('Supabase update failed:', error);
+          set({ connectionError: error.message || 'Failed to update opportunity' });
+        }
       });
     }
   },
@@ -102,7 +123,10 @@ export const useStore = create<AppStore>()((set, get) => ({
     }));
     // Background sync
     supabase.from('opportunities').delete().eq('id', id).then(({ error }) => {
-      if (error) console.error('Supabase delete failed:', error);
+      if (error) {
+        console.error('Supabase delete failed:', error);
+        set({ connectionError: error.message || 'Failed to delete opportunity' });
+      }
     });
   },
 
@@ -144,7 +168,10 @@ export const useStore = create<AppStore>()((set, get) => ({
         .update({ todays_focus_rank: index + 1 })
         .eq('id', id)
         .then(({ error }) => {
-          if (error) console.error('Supabase reorder failed:', error);
+          if (error) {
+            console.error('Supabase reorder failed:', error);
+            set({ connectionError: error.message || 'Failed to reorder focus list' });
+          }
         });
     });
   },

@@ -73,6 +73,16 @@ export function Navigation() {
         </div>
       </div>
 
+      {/* Debug Link */}
+      <div className="px-3 py-2">
+        <a
+          href="/debug"
+          className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+        >
+          Debug Info
+        </a>
+      </div>
+
       {/* Role Switcher */}
       <div className="px-3 py-4 border-t border-gray-700">
         <div className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-2 px-1">

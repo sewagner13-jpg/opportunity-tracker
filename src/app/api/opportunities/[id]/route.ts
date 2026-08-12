@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/neon';
+import { authorizeOpportunityServiceRequest } from '@/lib/service-auth.mjs';
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denial = authorizeOpportunityServiceRequest(req);
+  if (denial) return denial;
   try {
     const sql = getDb();
     const { id } = await params;
@@ -45,6 +48,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denial = authorizeOpportunityServiceRequest(req);
+  if (denial) return denial;
   try {
     const sql = getDb();
     const { id } = await params;
@@ -57,6 +62,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denial = authorizeOpportunityServiceRequest(req);
+  if (denial) return denial;
   try {
     const sql = getDb();
     const { id } = await params;

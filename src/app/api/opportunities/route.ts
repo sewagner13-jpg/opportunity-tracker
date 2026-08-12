@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/neon';
+import { authorizeOpportunityServiceRequest } from '@/lib/service-auth.mjs';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const denial = authorizeOpportunityServiceRequest(req);
+  if (denial) return denial;
   try {
     const sql = getDb();
     const rows = await sql`
@@ -15,6 +18,8 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const denial = authorizeOpportunityServiceRequest(req);
+  if (denial) return denial;
   try {
     const sql = getDb();
     const row = await req.json();
@@ -45,7 +50,9 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function DELETE() {
+export async function DELETE(req: NextRequest) {
+  const denial = authorizeOpportunityServiceRequest(req);
+  if (denial) return denial;
   try {
     const sql = getDb();
     await sql`DELETE FROM opportunities WHERE id != ''`;
@@ -54,4 +61,13 @@ export async function DELETE() {
     console.error('DELETE /api/opportunities failed:', err);
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
+}
+
+export async function HEAD(req: NextRequest) {
+  const denial = authorizeOpportunityServiceRequest(req);
+  if (denial) return denial;
+  return new Response(null, {
+    status: 200,
+    headers: { 'cache-control': 'no-store' },
+  });
 }

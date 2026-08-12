@@ -1,5 +1,16 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Opportunity API security
+
+Every `/api/opportunities` and `/api/opportunities/:id` method requires the
+server-only `OPPORTUNITY_TRACKER_SERVICE_TOKEN` bearer credential. The value
+must be 43–128 base64url characters and must never be exposed through a
+`NEXT_PUBLIC_` variable or browser code. Missing configuration fails closed.
+
+The production browser UI intentionally cannot receive this service credential.
+Interactive owner access requires a separate user-authentication implementation;
+do not weaken this boundary with Origin or Referer checks.
+
 ## Getting Started
 
 First, run the development server:

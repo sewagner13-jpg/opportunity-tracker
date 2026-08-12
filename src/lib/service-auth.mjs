@@ -1,4 +1,4 @@
-import { timingSafeEqual } from 'node:crypto';
+import { createHash, timingSafeEqual } from 'node:crypto';
 
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{43,128}$/u;
 
@@ -16,18 +16,18 @@ function failureResponse(request, status) {
 }
 
 function exactTokenMatch(candidate, expected) {
-  if (!TOKEN_PATTERN.test(candidate) || !TOKEN_PATTERN.test(expected)) return false;
-  const candidateBytes = Buffer.from(candidate, 'utf8');
-  const expectedBytes = Buffer.from(expected, 'utf8');
-  return candidateBytes.length === expectedBytes.length
-    && timingSafeEqual(candidateBytes, expectedBytes);
+  const candidateDigest = createHash('sha256').update(candidate, 'utf8').digest();
+  const expectedDigest = createHash('sha256').update(expected, 'utf8').digest();
+  return TOKEN_PATTERN.test(candidate)
+    && TOKEN_PATTERN.test(expected)
+    && timingSafeEqual(candidateDigest, expectedDigest);
 }
 
 export function authorizeOpportunityServiceRequest(
   request,
   configuredToken = process.env.OPPORTUNITY_TRACKER_SERVICE_TOKEN || '',
 ) {
-  const expected = String(configuredToken || '').trim();
+  const expected = String(configuredToken || '');
   if (!TOKEN_PATTERN.test(expected)) return failureResponse(request, 503);
 
   const authorization = String(request?.headers?.get?.('authorization') || '');

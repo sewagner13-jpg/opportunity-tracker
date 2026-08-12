@@ -40,6 +40,9 @@ credential or treating forgeable Origin/Referer headers as authentication.
 - [x] Unit regression failed before implementation and passes after it.
 - [x] Local production build returns 503 before database access for unsigned
       GET, HEAD, POST, PUT, PATCH, and DELETE; HEAD returns no body.
+- [x] Actual route exports cover all seven method/path pairs before database,
+      params, or malformed-body processing; removing the collection DELETE
+      guard produced the expected 500-vs-401 RED failure, then restored GREEN.
 - [ ] Server credential is present on both Netlify sites without disclosure.
 - [ ] Unsigned production GET/HEAD and all write methods fail closed before
       parsing a body or accessing the database.
